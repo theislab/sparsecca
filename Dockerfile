@@ -7,7 +7,10 @@ RUN set -ex \
     curl \
     git \
     bash-completion \
-    r-base
+    r-base \
+    gcc \
+    libglpk-dev \
+    glpk-utils
 
 
 USER $MAMBA_USER
@@ -18,6 +21,9 @@ RUN micromamba install -y -n base -f /tmp/environment.yaml && \
     micromamba clean --all --yes
 
 RUN source /usr/local/bin/_activate_current_env.sh && \
-    pip install black && \
+    pip install \
+    black \
+    pyomo \
+    && \
     R -e "install.packages(c('languageserver', 'PMA'), repos = 'https://cloud.r-project.org/')"
 

@@ -13,4 +13,4 @@ dependencies:
   - statsmodels
   - pip
   - pip:
-    - git+https://github.com/theislab/sparsecca.git
+      - git+https://github.com/theislab/sparsecca.git
