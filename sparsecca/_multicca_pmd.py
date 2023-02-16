@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import svd
 import pyomo as pyo
+from collections import defaultdict
 
 from ._utils_pmd import binary_search, l2n, soft, scale
 
@@ -35,20 +36,9 @@ def update_w(datasets, idx, sumabs, ws, ws_final):
 
 def ObjRule(model):
     """Objective Function (4.3 in witten 2009)"""
-    return sum((model.w[model.X[i]].T @ model.X[i].T  @ model.X[j] @ model.w[model.X[j]]) for i in range(model.X) for j in range(model.X) if i<j )
-
-def lasso(model, xi):
-    # sum over all entries of vector wi (i in [1:K])
-    return sum(abs(model.w[xi][f]) for f in range(len(model.w[xi])) ) <= model.c[xi]
-
-def norm2(model, xi):
-    # sum over all entries of vector wi (i in [1:K])
-    return sum(model.w[xi][f] * model.w[xi][f] for f in range(len(model.w[xi])) <= 1)
-
-
-def init_w(xi):
-    # TODO use svd vh from scipy 
-    return [0] * xi.shape[1]
+    features = len(model.PC.data())
+    #TODO: 25 not hard coded -> shape / features: len(xi)/features?
+    return sum(np.asarray([model.w_i_k[xi, f].value for f in model.PC.data()]).T @ np.asarray(xi).reshape(25,features).T @ np.asarray(xj).reshape(25,features) @ np.asarray([model.w_i_k[xj, f].value for f in model.PC.data()]) for idx, xi in enumerate(model.X) for jdx, xj in enumerate(model.X) if idx<jdx )
 
 
 
@@ -94,9 +84,9 @@ def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True)
     model = pyo.ConcreteModel()
 
     # set: Xi i in [1:K]
-    #Xi = set(x for x in datasets if x)
     datasets_as_tuples = [tuple(map(tuple,data)) for data in datasets] #(hashable)
     model.X = pyo.Set(initialize=datasets_as_tuples) 
+    model.PC = pyo.Set(initialize=range(len(datasets_as_tuples[0])))
 
     # params: ci i in [1:K]
     model.c = pyo.Param(model.X, initialize=penalties)
@@ -104,34 +94,35 @@ def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True)
     # variables: wi i in [1:K]
     #each wi needs to be a vector 1*len(features) -> features is amount of columns in Xi use list 
     
-    model.w = pyo.Var(model.X, initialize=init_w)
+    model.w_i_k = pyo.Var(model.X, model.PC, bounds=(0, 1), initialize=0)
 
     # Objective
     model.Obj = pyo.Objective(rule=ObjRule, sense=pyo.maximize)
 
     # constraints: lasso 
     model.constraint_lasso = pyo.ConstraintList()
-    model.constraint_lasso.add(model.X, rule=lasso) 
-    """for xi in model.X:
-        #lasso
-        model.constraint_lasso.add(sum(model.w[xi][f] for f in range(len(model.w[xi])) <= model.c[xi]))
-    """
+    for xi in model.X:
+        model.constraint_lasso.add(sum(model.w_i_k[xi, f] for f in model.PC.data())<= model.c[xi])
+    
     # constraints: (2-norm)^2 ||wi||22 <=1
     model.constraint_norm2 = pyo.ConstraintList()
-    model.constraint_norm2.add(model.X, rule=norm2)
-    """for xi in model.X:
-        #norm2
-        model.constraint_norm2.add(sum(model.w[xi][f] * model.w[xi][f] for f in range(len(model.w[xi])) <= 1))
-    """
+    for xi in model.X:
+        model.constraint_norm2.add(sum(model.w_i_k[xi, f] * model.w_i_k[xi,f] for f in model.PC.data()) <= 1)
+
 
     opt = pyo.SolverFactory('glpk')
     instance = model.create_instance()
     res = opt.solve(instance)
 
     model.solutions.load_from(res)
-    weights = [wi for wi in instance.w]
 
-    return weights
+    w = defaultdict(list)
+    for xi in model.X:
+        for f in model.PC.data():
+            w[xi].append(instance.w_i_k[xi,f].value) # maybe just i as index?
+
+
+    return w
 
 
     # OLD CODE
