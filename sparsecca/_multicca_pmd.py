@@ -110,17 +110,15 @@ def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True)
         model.constraint_norm2.add(sum(model.w_i_k[xi, f] * model.w_i_k[xi,f] for f in model.PC.data()) <= 1)
 
 
-    opt = pyo.SolverFactory('glpk')
-    instance = model.create_instance()
-    res = opt.solve(instance)
-
+    nonLinearOpt =pyo.SolverFactory('ipopt')
+    instance_non_linear = model.create_instance()
+    res = nonLinearOpt.solve(instance_non_linear)
     model.solutions.load_from(res)
 
     w = defaultdict(list)
     for xi in model.X:
         for f in model.PC.data():
-            w[xi].append(instance.w_i_k[xi,f].value) # maybe just i as index?
-
+            w[xi].append(instance_non_linear.w_i_k[xi,f].value) # maybe just i as index?
 
     return w
 
