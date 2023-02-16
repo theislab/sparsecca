@@ -95,7 +95,8 @@ def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True)
 
     # set: Xi i in [1:K]
     #Xi = set(x for x in datasets if x)
-    model.X = pyo.Set(initialize=datasets) 
+    datasets_as_tuples = [tuple(map(tuple,data)) for data in datasets] #(hashable)
+    model.X = pyo.Set(initialize=datasets_as_tuples) 
 
     # params: ci i in [1:K]
     model.c = pyo.Param(model.X, initialize=penalties)
