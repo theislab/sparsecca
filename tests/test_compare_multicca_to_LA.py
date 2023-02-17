@@ -44,13 +44,13 @@ def test_compare_multicca_to_Linear_approach():
         """
     )
 
-    ws_LA = multicca_LA(datasets, [1.5, 1.5],standardize=True, niter=25)
+    #ws_LA = multicca_LA(datasets, [1.5, 1.5],standardize=True, niter=25)
 
     print("\nR weigth:")
     print(r_pma_ws)
 
     print("\nLA weight:")
-    print(ws_LA)
+    #print(ws_LA)
 
     # TODO: install solver "ipopt" on dev container
     # TODO: compare output to python function
