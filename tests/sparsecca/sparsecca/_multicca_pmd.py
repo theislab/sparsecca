@@ -1,9 +1,12 @@
 import numpy as np
 from scipy.linalg import svd
-import pyomo as pyo
+import pyomo.environ as pyo
 from collections import defaultdict
+#from sparsecca import _utils_pmd
 
 from ._utils_pmd import binary_search, l2n, soft, scale
+
+import pandas as pd
 
 
 def get_crit(datasets, ws):
@@ -49,7 +52,7 @@ def ObjRule(model):
         
 
 
-def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True):
+def multicca_LA(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True):
     """Re-implementation of the MultiCCA Using Linear programming.
 
     Params
@@ -72,7 +75,7 @@ def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True)
         sparse canonical variates per dataset.
     """
     # get only values from datsets
-    datasets = [datasets[0].iloc[:,1:7].values, datasets[1].iloc[:,1:6].values]
+    #datasets = [datasets[0].iloc[:,1:7].values, datasets[1].iloc[:,1:6].values]
 
     # preprocessing:
     datasets = datasets.copy()
@@ -86,8 +89,7 @@ def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True)
                 datasets[idx] = scale(datasets[idx], center=True, scale=True)
             else:
                 datasets[idx] = scale(datasets[idx], center=True, scale=False)
-
-
+            datasets[idx] = datasets[idx].tolist()
 
 
     # Linear Programming

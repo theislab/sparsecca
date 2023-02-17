@@ -1,6 +1,6 @@
 import copy
 import numpy as np
-from ._multicca_pmd import multicca
+from ._multicca_pmd import multicca_LA
 from ._utils_pmd import scale
 
 

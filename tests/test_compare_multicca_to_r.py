@@ -2,38 +2,22 @@ import numpy as np
 import pandas as pd
 from rpy2 import robjects
 import rpy2.robjects.packages as rpackages
+from rpy2.robjects.numpy2ri import numpy2rpy
 
-from sparsecca import multicca_pmd
+# TODO: merge with elias tests -> multicca was changed to multicca_LA 
+#from sparsecca.sparsecca._multicca_pmd import multicca
 
+utils = rpackages.importr("utils")
+utils.chooseCRANmirror(ind=1)
 
-def test_compare_multicca_to_r_2datasets():
-    datasets = [
-        pd.read_csv("tests/data/multicca1.csv", sep=",", index_col=0).values,
-        pd.read_csv("tests/data/multicca2.csv", sep=",", index_col=0).values,
-    ]
+if not rpackages.isinstalled("PMA"):
+    utils.install_packages("PMA", verbose=True)
 
-    ws, _ = multicca_pmd(datasets, [1.5, 1.5], K=3, standardize=True, niter=25)
+r_multicca = robjects.r(
+    """
+    library("PMA")
 
-    utils = rpackages.importr("utils")
-    utils.chooseCRANmirror(ind=1)
-
-    if not rpackages.isinstalled("PMA"):
-        utils.install_packages("PMA", verbose=True)
-
-    r_pma_ws = robjects.r(
-        """
-        library("PMA")
-
-        cls <- c(lat = "numeric", lon = "numeric")
-        data1 <- read.table("tests/data/multicca1.csv", sep = ",", header = TRUE)
-        rownames(data1) <- data1$X
-        data1 <- data1[, 2:ncol(data1)]
-
-        data2 <- read.table("tests/data/multicca2.csv", sep = ",", header = TRUE)
-        rownames(data2) <- data2$X
-        data2 <- data2[, 2:ncol(data2)]
-
-        datasets <- list(data1, data2)
+    function (datasets) {
         res <- MultiCCA(
             datasets,
             type = "standard",
@@ -43,57 +27,48 @@ def test_compare_multicca_to_r_2datasets():
         )
 
         res$ws
-        """
-    )
-
-    for i in range(len(r_pma_ws)):
-        assert np.allclose(ws[i], np.array(r_pma_ws[i]), rtol=1e-10)
+    }
+    """
+)
 
 
-def test_compare_multicca_to_r_3datasets():
+def test_compare_multicca_to_r_2datasets_equal_feature_length():
     datasets = [
-        pd.read_csv("tests/data/multicca1.csv", sep=",", index_col=0).values,
-        pd.read_csv("tests/data/multicca2.csv", sep=",", index_col=0).values,
-        pd.read_csv("tests/data/multicca1.csv", sep=",", index_col=0).values,
+        pd.read_csv("sparsecca/tests/data/multicca1.csv", sep=",", index_col=0).values,
+        pd.read_csv("sparsecca/tests/data/multicca2.csv", sep=",", index_col=0).values,
     ]
 
-    ws, _ = multicca_pmd(datasets, [1.5, 1.5, 1.5], K=3, standardize=True, niter=25)
+    datasets_r = [numpy2rpy(x) for x in datasets]
 
-    utils = rpackages.importr("utils")
-    utils.chooseCRANmirror(ind=1)
+    ws, _ = multicca(datasets, [1.5, 1.5], K=3, standardize=True, niter=25)
+    r_ws = r_multicca(datasets_r)
 
-    if not rpackages.isinstalled("PMA"):
-        utils.install_packages("PMA", verbose=True)
+    for i in range(len(r_ws)):
+        assert np.allclose(ws[i], np.array(r_ws[i]), rtol=1e-10)
 
-    r_pma_ws = robjects.r(
-        """
-        library("PMA")
 
-        cls <- c(lat = "numeric", lon = "numeric")
-        data1 <- read.table("tests/data/multicca1.csv", sep = ",", header = TRUE)
-        rownames(data1) <- data1$X
-        data1 <- data1[, 2:ncol(data1)]
+def test_compare_multicca_to_r_3datasets_equal_feature_length():
+    datasets = [
+        pd.read_csv("sparsecca/tests/data/multicca1.csv", sep=",", index_col=0).values,
+        pd.read_csv("sparsecca/tests/data/multicca2.csv", sep=",", index_col=0).values,
+        pd.read_csv("sparsecca/tests/data/multicca3.csv", sep=",", index_col=0).values,
+    ]
 
-        data2 <- read.table("tests/data/multicca2.csv", sep = ",", header = TRUE)
-        rownames(data2) <- data2$X
-        data2 <- data2[, 2:ncol(data2)]
+    datasets_r = [numpy2rpy(x) for x in datasets]
 
-        data3 <- read.table("tests/data/multicca1.csv", sep = ",", header = TRUE)
-        rownames(data3) <- data3$X
-        data3 <- data3[, 2:ncol(data3)]
+    ws, _ = multicca(datasets, [1.5, 1.5, 1.5], K=3, standardize=True, niter=25)
 
-        datasets <- list(data1, data2, data3)
-        res <- MultiCCA(
-            datasets,
-            type = "standard",
-            penalty = 1.5,
-            ncomponents = 3,
-            standardize = TRUE
-        )
+    r_ws = r_multicca(datasets_r)
 
-        res$ws
-        """
-    )
+    print("\n\n===== OUTPUT CORRELATION: =====")
+    corrcoefs = []
+
+    for i in range(len(r_ws)):
+        corrcoef = np.corrcoef(np.array(ws[i]).flatten(), np.array(r_ws[i]).flatten())[
+            0, 1
+        ]
+        corrcoefs.append(corrcoef)
+        print(f"corrcoef[{i}]: {corrcoef}")
 
     print("\n\n===== OUTPUTS: =====")
 
@@ -103,13 +78,76 @@ def test_compare_multicca_to_r_3datasets():
         print(w)
 
     print("\nPMA.MultiCCA")
-    for i, w in enumerate(r_pma_ws):
+    for i, w in enumerate(r_ws):
         print(f"ws[{i}]:")
         print(np.array(w))
 
-    for i in range(len(r_pma_ws)):
-        assert np.allclose(ws[i], np.array(r_pma_ws[i]), rtol=1e-10)
+    for i in range(len(r_ws)):
+        assert np.allclose(ws[i], np.array(r_ws[i]), rtol=1e-10)
+
+
+def test_compare_multicca_to_r_2datasets_unequal_feature_length():
+    datasets = [
+        pd.read_csv("sparsecca/tests/data/multicca1.csv", sep=",", index_col=0).values,
+        pd.read_csv(
+            "sparsecca/tests/data/multicca2_6features.csv", sep=",", index_col=0
+        ).values,
+    ]
+
+    datasets_r = [numpy2rpy(x) for x in datasets]
+
+    ws, _ = multicca(datasets, [1.5, 1.5], K=3, standardize=True, niter=25)
+    r_ws = r_multicca(datasets_r)
+
+    for i in range(len(r_ws)):
+        assert np.allclose(ws[i], np.array(r_ws[i]), rtol=1e-10)
+
+
+def test_compare_multicca_to_r_3datasets_unequal_feature_length():
+    datasets = [
+        pd.read_csv("sparsecca/tests/data/multicca1.csv", sep=",", index_col=0).values,
+        pd.read_csv(
+            "sparsecca/tests/data/multicca2_6features.csv", sep=",", index_col=0
+        ).values,
+        pd.read_csv(
+            "sparsecca/tests/data/multicca3_4features.csv", sep=",", index_col=0
+        ).values,
+    ]
+
+    datasets_r = [numpy2rpy(x) for x in datasets]
+
+    ws, _ = multicca(datasets, [1.5, 1.5, 1.5], K=3, standardize=True, niter=25)
+
+    r_ws = r_multicca(datasets_r)
+
+    print("\n\n===== OUTPUT CORRELATION: =====")
+    corrcoefs = []
+
+    for i in range(len(r_ws)):
+        corrcoef = np.corrcoef(np.array(ws[i]).flatten(), np.array(r_ws[i]).flatten())[
+            0, 1
+        ]
+        corrcoefs.append(corrcoef)
+        print(f"corrcoef[{i}]: {corrcoef}")
+
+    print("\n\n===== OUTPUTS: =====")
+
+    print("\nsparsecca.multicca_pmd")
+    for i, w in enumerate(ws):
+        print(f"ws[{i}]:")
+        print(w)
+
+    print("\nPMA.MultiCCA")
+    for i, w in enumerate(r_ws):
+        print(f"ws[{i}]:")
+        print(np.array(w))
+
+    for i in range(len(r_ws)):
+        assert np.allclose(ws[i], np.array(r_ws[i]), rtol=1e-10)
 
 
 if __name__ == "__main__":
-    test_compare_multicca_to_r_2datasets()
+    test_compare_multicca_to_r_2datasets_equal_feature_length()
+    test_compare_multicca_to_r_3datasets_equal_feature_length()
+    test_compare_multicca_to_r_2datasets_unequal_feature_length()
+    test_compare_multicca_to_r_3datasets_unequal_feature_length()
