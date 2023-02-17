@@ -1,7 +1,11 @@
 import numpy as np
 from scipy.linalg import svd
+import pyomo.environ as pyo
+from collections import defaultdict
 
 from ._utils_pmd import binary_search, l2n, soft, scale
+
+import pandas as pd
 
 
 def get_crit(datasets, ws):
@@ -28,16 +32,33 @@ def update_w(datasets, idx, sumabs, ws, ws_final):
         w_ = soft(tots, sumabs) / l2n(soft(tots, sumabs))
 
         return w_
+    
+
+# Linear Programming 
+
+def ObjRule(model):
+    """Objective Function (4.3 in witten 2009)"""
+    features = len(model.PC.data())
+    samples = len(model.samples.data())
+    #TODO: array from  w_i_k (for all pcs)
+    return sum(
+                sum((np.asarray([[model.w_i_k_f[idx, k, f] for f in model.PC.data()] for k in model.K.data()])
+               @ np.asarray(xi).reshape(samples,features).T 
+               @ np.asarray(xj).reshape(samples,features)
+               @ np.asarray([[model.w_i_k_f[jdx, k, f] for f in model.PC.data()] for k in model.K.data()]).T)[r,c] 
+               for r in model.K.data() for c in model.K.data())
+               for idx, xi in enumerate(model.X) for jdx, xj in enumerate(model.X) if idx<jdx )
+        
 
 
 def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True):
-    """Re-implementation of the MultiCCA function from R package PMA.
+    """Re-implementation of the MultiCCA Using Linear programming.
 
     Params
     ------
     datasets
     penalties
-    niter : int (default: 25)
+    niter : int (default: 25) -> ignored
     K : int (default: 1)
     standardize : bool (default: True)
         Whether to center and scale each dataset before computing sparse
@@ -52,6 +73,10 @@ def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True)
         List of arrays of shape (datasets.shape[1], K) corresponding to the
         sparse canonical variates per dataset.
     """
+    # get only values from datsets
+    datasets = [datasets[0].iloc[:,1:7].values, datasets[1].iloc[:,1:6].values]
+
+    # preprocessing:
     datasets = datasets.copy()
     for data in datasets:
         if data.shape[1] < 2:
@@ -64,46 +89,47 @@ def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True)
             else:
                 datasets[idx] = scale(datasets[idx], center=True, scale=False)
 
-    ws = []
-    for idx in range(len(datasets)):
-        ws.append(svd(datasets[idx])[2][0:K].T)
 
-    sumabs = []
-    for idx, penalty in enumerate(penalties):
-        if mimic_R:
-            sumabs.append(penalty)
-        else:
-            sumabs.append(penalty*np.sqrt(datasets[idx].shape[1]))
 
-    ws_init = ws
 
-    ws_final = []
-    for idx in range(len(datasets)):
-        ws_final.append(np.zeros((datasets[idx].shape[1], K)))
+    # Linear Programming
+    model = pyo.ConcreteModel()
+    
+    # sets: 
+    model.Idx = pyo.Set(initialize=range(len(datasets)))
+    model.samples = pyo.Set(initialize=range(len(datasets[0])))
+    model.PC = pyo.Set(initialize=range(len(datasets[0][0])))
+    model.K = pyo.Set(initialize=range(K))
+    model.X = pyo.Set(initialize=datasets) 
 
-    for comp_idx in range(K):
-        ws = []
-        for idx in range(len(ws_init)):
-            ws.append(ws_init[idx][:, comp_idx])
+    # params: ci i in [1:N]
+    model.c = pyo.Param(model.Idx, initialize=penalties)
 
-        curiter = 0
-        crit_old = -10
-        crit = -20
-        storecrits = []
+    # variables: weights
+    model.w_i_k_f = pyo.Var(model.Idx,model.K, model.PC, bounds=(0, 1), initialize=0.5)
+    
+    # Objective
+    model.Obj = pyo.Objective(rule=ObjRule, sense=pyo.maximize)
 
-        while (curiter < niter and 
-               np.abs(crit_old - crit) / np.abs(crit_old) > 0.001 and
-               crit_old != 0):
-            crit_old = crit
-            crit = get_crit(datasets, ws)
+    # constraints: lasso model.constraint_lasso = pyo.ConstraintList()
+    model.constraint_lasso = pyo.ConstraintList()
+    for i in model.Idx:
+        model.constraint_lasso.add(sum(model.w_i_k_f[i,k,f] for k in model.K.data() for f in model.PC.data())<= model.c[i])
+              
+    # constraints: (2-norm)^2 ||wi||22 <=1
+    model.constraint_norm2 = pyo.ConstraintList()
+    for i in model.Idx:
+        model.constraint_norm2.add(sum(model.w_i_k_f[i,k,f] * model.w_i_k_f[i,k,f] for k in model.K.data() for f in model.PC.data()) <= 1)
+    
+    nonLinearOpt =pyo.SolverFactory('ipopt')
+    instance_non_linear = model.create_instance()
+    res = nonLinearOpt.solve(instance_non_linear)
+    model.solutions.load_from(res)
 
-            storecrits.append(crit)
-            curiter += 1
-            for idx in range(len(datasets)):
-                ws[idx] = update_w(datasets, idx, sumabs[idx], ws, ws_final)
 
-        for idx in range((len(datasets))):
-            ws_final[idx][:, comp_idx] = ws[idx]
-
-    return ws_final, ws_init
-
+    w = defaultdict(list)
+    for i in model.Idx:
+        for k in model.K.data():
+            for f in model.PC.data():
+                w[i, k].append(instance_non_linear.w_i_k_f[i,k,f].value) # maybe just i as index?
+    return w
