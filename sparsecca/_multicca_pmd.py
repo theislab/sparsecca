@@ -40,12 +40,13 @@ def ObjRule(model):
     samples = len(model.samples.data())
     #TODO: array from  w_i_k (for all pcs)
     return sum(
-                (np.asarray([model.w_i_k_f[idx, k, f] for k in model.K.data() for f in model.PC.data()])
+                sum((np.asarray([[model.w_i_k_f[idx, k, f] for f in model.PC.data()] for k in model.K.data()])
                @ np.asarray(xi).reshape(samples,features).T 
                @ np.asarray(xj).reshape(samples,features)
-               @ np.asarray([model.w_i_k_f[jdx, k, f] for k in model.K.data() for f in model.PC.data()])[np.newaxis].T)[0]
+               @ np.asarray([[model.w_i_k_f[jdx, k, f] for f in model.PC.data()] for k in model.K.data()]).T)[r,c] 
+               for r in model.K.data() for c in model.K.data())
                for idx, xi in enumerate(model.X) for jdx, xj in enumerate(model.X) if idx<jdx )
-    
+        
 
 
 def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True):
@@ -115,9 +116,7 @@ def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True)
               
     # constraints: (2-norm)^2 ||wi||22 <=1
     model.constraint_norm2 = pyo.ConstraintList()
-    #model.constraint_norm2.add(model.X, rule=norm2)
     for i in model.Idx:
-            #norm2
         model.constraint_norm2.add(sum(model.w_i_k_f[i,k,f] * model.w_i_k_f[i,k,f] for k in model.K.data() for f in model.PC.data()) <= 1)
     
     nonLinearOpt =pyo.SolverFactory('ipopt')
