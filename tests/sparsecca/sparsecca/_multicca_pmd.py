@@ -156,4 +156,7 @@ def lp_pmd(datasets:list, penalties:list,  K:int, standadize, mimic_R):
                 weight_output[n][f][k] = w_feature
         
     return weight_output
+
+def multicca(datasets:list, penalties:list,  K:int, standadize, mimic_R):
+    return lp_pmd(datasets, penalties, K, standadize, mimic_R)
     
