@@ -10,6 +10,7 @@ RUN set -ex \
     r-base \
     gcc \
     libglpk-dev \
+    coinor-libipopt-dev \
     glpk-utils
 
 

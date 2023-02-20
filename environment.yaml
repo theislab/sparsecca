@@ -7,6 +7,7 @@ dependencies:
   - ipykernel
   # sparsecca dependencies
   - rpy2
+  - ipopt
   - pytest
   - pandas
   - numpy
