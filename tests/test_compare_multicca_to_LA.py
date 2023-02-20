@@ -26,7 +26,7 @@ def test_compare_multicca_to_Linear_approach():
         rownames(data1) <- data1$X
         data1 <- data1[, 2:ncol(data1)]
 
-        data2 <- read.table("/workspaces/sparsecca/tests/data/multicca2.csv", sep = ",", header = TRUE)
+        data2 <- read.table("/workspaces/sparsecca/tests/data/multicca3.csv", sep = ",", header = TRUE)
         rownames(data2) <- data2$X
         data2 <- data2[, 2:ncol(data2)]
 
@@ -52,14 +52,12 @@ def test_compare_multicca_to_Linear_approach():
     print(ws_LA)
 
     k=0
-    # TODO: compare output to r function
    
     for i in range(len(r_pma_ws)):
-        #print(np.array(ws_LA[i,0]).reshape(5,1))
         print(np.array(r_pma_ws[i]))
         print(ws_LA[i])
-
-        #assert np.allclose(np.array(ws_LA[i,0]).reshape(5,1), (np.array(r_pma_ws[i])), rtol=1e-10)
+        print(np.allclose(ws_LA[i], np.array(r_pma_ws[i]), rtol=1e-10))
+        #assert np.allclose(ws_LA[i], np.array(r_pma_ws[i]), rtol=1e-10)
 
 if __name__ == "__main__":
     test_compare_multicca_to_Linear_approach()
