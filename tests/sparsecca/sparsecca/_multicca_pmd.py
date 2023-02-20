@@ -12,24 +12,8 @@ import pandas as pd
 
 # Linear Programming 
 
-def scale(mtx, center=True, scale=True):
-    """
-    Reimplement scale function from R
-    """
-    if not center:
-        raise NotImplementedError('Scaling without centering not implemented')
 
-    centered = mtx - np.mean(mtx, axis=0)
-    if not scale:
-        return centered
-
-    # to replicate the R implementation of scale, we apply Bessel's
-    # correction when calculating the standard deviation in numpy
-    scaled = centered / centered.std(axis=0, ddof=1)
-    return scaled
-
-
-def preprocess_datasets(datasets:list):
+def preprocess_datasets(datasets:list, standardize=True, mimic_R=True):
     # preprocess data
     datasets = datasets.copy()
     # 2 features needed
@@ -62,21 +46,20 @@ def ObjRule(model):
                for idx, xi in enumerate(model.X) for jdx, xj in enumerate(model.X) if idx<jdx )
 
 
-def do_linear_approach(datasets, penalties):
-""" solves 4.3 of witten 2009 with linear programming approach
-    -------
-    Parameters:  
-        datasets: N matrices [samples x features]
-        penalties: list of length N for each Xi
-    
-    -------
-    Returns: 
-        w: defaultdict(list)
-        - for each matrix Xn in datasets (n in [1:n]): n-> weights_vector
-        - each weights_vector: list of length f (featuresize)
-        - f = len(datasets[0][0])
-    """
-
+def _update_w_lp(datasets, penalties):
+    """ solves 4.3 of witten 2009 with linear programming approach
+        -------
+        Parameters:  
+            datasets: N matrices [samples x features]
+            penalties: list of length N for each Xi
+        
+        -------
+        Returns: 
+            w: defaultdict(list)
+            - for each matrix Xn in datasets (n in [1:n]): n-> weights_vector
+            - each weights_vector: list of length f (featuresize)
+            - f = len(datasets[0][0])
+        """
     model = pyo.ConcreteModel()
 
     # sets 
@@ -122,7 +105,7 @@ def do_linear_approach(datasets, penalties):
 
 
 
-def iterative_process_K(datasets:list, penalties:list,  K:int):
+def lp_pmd(datasets:list, penalties:list,  K:int, standadize, mimic_R):
     """ calculates K weights [1xN]
     -------
     Parameters:  
@@ -133,20 +116,17 @@ def iterative_process_K(datasets:list, penalties:list,  K:int):
     -------
     Returns
         weights : list
-        - list of length K
-        - each entry is a default dict: n -> weights_vector (1 x feature)
-            (n is the index of the matrix Xn. n in [1:N])
-        - feature = len(datasets[0][0])
+        - list of length N, arrays of shape feature x K
     """
     sample_size = len(datasets[0])
     feature_amount = len(datasets[0][0])
     
-    datasets_next = preprocess_datasets(datasets)
+    datasets_next = preprocess_datasets(datasets, standardize=standadize, mimic_R=mimic_R)
     weights = []
     
     k = 0
     while k < K:
-        w = do_linear_approach(datasets_next, penalties)
+        w = _update_w_lp(datasets_next, penalties)
         datasets_current = datasets_next
     
         w_samples = {}
@@ -164,21 +144,16 @@ def iterative_process_K(datasets:list, penalties:list,  K:int):
         weights.append(w)      
             
         k += 1
+
+    weight_output = [np.zeros((len(datasets[0][0]),K))]*len(datasets)
+    for k, w_k in enumerate(weights):
+        #print(f"k: {k}")
+        for n, w_value in enumerate(w_k.values()):
+            #print(f"n: {n}")
+            for f, w_feature in enumerate(w_value):
+                #print(f"f: {f}")
+                #print(w_feature)
+                weight_output[n][f][k] = w_feature
         
-    return weights
-
-
-def multicca_LA(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True):
-    """Re-implementation of the MultiCCA Using Linear programming.
-    
-    ignores mimic_R, standadize and niter
-   
-    Returns
-    -------
-    ws : list
-        - list of length K
-        - each entry is a default dict: n -> weights_vector (1 x feature)
-            (n is the index of the matrix Xn. n in [1:N])
-    """
-    return iterative_process_K(datasets, penalties, K)
+    return weight_output
     
