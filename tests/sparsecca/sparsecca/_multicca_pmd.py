@@ -158,5 +158,5 @@ def lp_pmd(datasets:list, penalties:list,  K:int, standardize:bool, mimic_R):
     return weight_output
 
 def multicca(datasets:list, penalties:list,  K:int, standardize, mimic_R):
-    return lp_pmd(datasets, penalties, K, standadize, mimic_R)
+    return lp_pmd(datasets, penalties, K, standardize, mimic_R)
     
