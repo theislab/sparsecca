@@ -114,9 +114,10 @@ def lp_pmd(datasets:list, penalties:list,  K:int, standardize:bool, mimic_R):
         K: Amount of MCPs
     
     -------
-    Returns
-        weights : list
+    Returns: weights
+        w_final : list
         - list of length N, arrays of shape feature x K
+        w_init: initialized with 0.5
     """
     sample_size = len(datasets[0])
     feature_amount = len(datasets[0][0])
@@ -145,7 +146,7 @@ def lp_pmd(datasets:list, penalties:list,  K:int, standardize:bool, mimic_R):
             
         k += 1
 
-    weight_output = [np.zeros((len(datasets[0][0]),K))]*len(datasets)
+    w_final = [np.zeros((len(datasets[0][0]),K))]*len(datasets)
     for k, w_k in enumerate(weights):
         #print(f"k: {k}")
         for n, w_value in enumerate(w_k.values()):
@@ -153,9 +154,10 @@ def lp_pmd(datasets:list, penalties:list,  K:int, standardize:bool, mimic_R):
             for f, w_feature in enumerate(w_value):
                 #print(f"f: {f}")
                 #print(w_feature)
-                weight_output[n][f][k] = w_feature
+                w_final[n][f][k] = w_feature
         
-    return weight_output
+    w_init = [np.full((len(datasets[0][0]),K), 0.5)]*len(datasets)
+    return w_final, w_init
 
 def multicca(datasets:list, penalties:list,  K:int, standardize, mimic_R):
     return lp_pmd(datasets, penalties, K, standardize, mimic_R)
