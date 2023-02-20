@@ -36,13 +36,13 @@ def preprocess_datasets(datasets:list, standardize=True, mimic_R=True):
 
 def ObjRule(model):
     """Objective Function (4.3 in witten 2009)"""
-    features = len(model.PC.data())
-    samples = len(model.samples.data())
+    features = len(model.F.data())
+    samples = len(model.S.data())
     return sum(
-                (np.asarray([model.w_i_f[idx, f] for f in model.PC.data()])[np.newaxis]
+                (np.asarray([model.w_i_f[idx, f] for f in model.F.data()])[np.newaxis]
                @ np.asarray(xi).reshape(samples,features).T 
                @ np.asarray(xj).reshape(samples,features)
-               @ np.asarray([model.w_i_f[jdx, f] for f in model.PC.data()])[np.newaxis].T)[0,0] 
+               @ np.asarray([model.w_i_f[jdx, f] for f in model.F.data()])[np.newaxis].T)[0,0] 
                for idx, xi in enumerate(model.X) for jdx, xj in enumerate(model.X) if idx<jdx )
 
 
@@ -63,29 +63,29 @@ def _update_w_lp(datasets, penalties):
     model = pyo.ConcreteModel()
 
     # sets 
-    model.Idx = pyo.Set(initialize=range(len(datasets)))
-    model.samples = pyo.Set(initialize=range(len(datasets[0])))
-    model.PC = pyo.Set(initialize=range(len(datasets[0][0])))
+    model.N = pyo.Set(initialize=range(len(datasets)))
+    model.S = pyo.Set(initialize=range(len(datasets[0])))
+    model.F = pyo.Set(initialize=range(len(datasets[0][0])))
     model.X = pyo.Set(initialize=datasets)
 
     # params: ci i in [1:K]
-    model.c = pyo.Param(model.Idx, initialize=penalties)
+    model.c = pyo.Param(model.N, initialize=penalties)
 
     # var
-    model.w_i_f = pyo.Var(model.Idx, model.PC, bounds=(0, 1), initialize=0.5)
+    model.w_i_f = pyo.Var(model.N, model.F, bounds=(0, 1), initialize=0.5)
 
     # obj
     model.Obj = pyo.Objective(rule=ObjRule, sense=pyo.maximize)
     
     # constraints: lasso 
     model.constraint_lasso = pyo.ConstraintList()
-    for i in model.Idx:
-        model.constraint_lasso.add(sum(model.w_i_f[i,f] for f in model.PC.data())<= model.c[i])
+    for i in model.N:
+        model.constraint_lasso.add(sum(model.w_i_f[i,f] for f in model.F.data())<= model.c[i])
         
     # constraints: (2-norm)^2 ||wi||22 <=1
     model.constraint_norm2 = pyo.ConstraintList()
-    for i in model.Idx:
-        model.constraint_norm2.add(sum(model.w_i_f[i,f] * model.w_i_f[i,f] for f in model.PC.data()) <= 1)
+    for i in model.N:
+        model.constraint_norm2.add(sum(model.w_i_f[i,f] * model.w_i_f[i,f] for f in model.F.data()) <= 1)
         
     # solving
     nonLinearOpt = pyo.SolverFactory('ipopt')
@@ -97,8 +97,8 @@ def _update_w_lp(datasets, penalties):
     
     from collections import defaultdict
     w = defaultdict(list)
-    for i in model.Idx:
-        for f in model.PC.data():
+    for i in model.N:
+        for f in model.F.data():
             w[i].append(instance_non_linear.w_i_f[i,f].value) 
             
     return w
