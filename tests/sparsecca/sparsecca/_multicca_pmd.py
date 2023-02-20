@@ -8,128 +8,177 @@ from ._utils_pmd import binary_search, l2n, soft, scale
 
 import pandas as pd
 
-
-def get_crit(datasets, ws):
-    crit = 0
-    for ii in range(1, len(datasets)):
-        for jj in range(0, ii):
-            crit = crit + ws[ii].T @ datasets[ii].T @ datasets[jj] @ ws[jj]
-    return crit
-
-
-def update_w(datasets, idx, sumabs, ws, ws_final):
-    tots = 0
-    for jj in [ii for ii in range(len(datasets)) if ii != idx]:
-        diagmat = ws_final[idx].T @ datasets[idx].T @ datasets[jj] @ ws_final[jj]
-        for a in range(diagmat.shape[0]):
-            for b in range(diagmat.shape[1]):
-                if a != b:
-                    diagmat[a, b] = 0
-
-        tots = (tots + datasets[idx].T @ datasets[jj] @ ws[jj] -
-                ws_final[idx] @ diagmat @ ws_final[jj].T @ ws[jj])
-
-        sumabs = binary_search(tots, sumabs)
-        w_ = soft(tots, sumabs) / l2n(soft(tots, sumabs))
-
-        return w_
-    
+   
 
 # Linear Programming 
 
-def ObjRule(model):
-    """Objective Function (4.3 in witten 2009)"""
-    features = len(model.PC.data())
-    samples = len(model.samples.data())
-    #TODO: array from  w_i_k (for all pcs)
-    return sum(
-                sum((np.asarray([[model.w_i_k_f[idx, k, f] for f in model.PC.data()] for k in model.K.data()])
-               @ np.asarray(xi).reshape(samples,features).T 
-               @ np.asarray(xj).reshape(samples,features)
-               @ np.asarray([[model.w_i_k_f[jdx, k, f] for f in model.PC.data()] for k in model.K.data()]).T)[r,c] 
-               for r in model.K.data() for c in model.K.data())
-               for idx, xi in enumerate(model.X) for jdx, xj in enumerate(model.X) if idx<jdx )
-        
-
-
-def multicca_LA(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True):
-    """Re-implementation of the MultiCCA Using Linear programming.
-
-    Params
-    ------
-    datasets
-    penalties
-    niter : int (default: 25) -> ignored
-    K : int (default: 1)
-    standardize : bool (default: True)
-        Whether to center and scale each dataset before computing sparse
-        canonical variates.
-    mimic_R : bool (default: True)
-        Whether to mimic the R implementation exactly. Note that this flag can
-        significantly change the resulting values.
-
-    Returns
-    -------
-    ws : list
-        List of arrays of shape (datasets.shape[1], K) corresponding to the
-        sparse canonical variates per dataset.
+def scale(mtx, center=True, scale=True):
     """
-    # get only values from datsets
-    #datasets = [datasets[0].iloc[:,1:7].values, datasets[1].iloc[:,1:6].values]
+    Reimplement scale function from R
+    """
+    if not center:
+        raise NotImplementedError('Scaling without centering not implemented')
 
-    # preprocessing:
+    centered = mtx - np.mean(mtx, axis=0)
+    if not scale:
+        return centered
+
+    # to replicate the R implementation of scale, we apply Bessel's
+    # correction when calculating the standard deviation in numpy
+    scaled = centered / centered.std(axis=0, ddof=1)
+    return scaled
+
+
+def preprocess_datasets(datasets:list):
+    # preprocess data
     datasets = datasets.copy()
+    # 2 features needed
     for data in datasets:
-        if data.shape[1] < 2:
+        if len(data[0]) < 2:
             raise Exception('Need at least 2 features in each dataset')
 
+        # standardize if set TRUE
     if standardize:
         for idx in range(len(datasets)):
             if mimic_R:
                 datasets[idx] = scale(datasets[idx], center=True, scale=True)
             else:
                 datasets[idx] = scale(datasets[idx], center=True, scale=False)
+
             datasets[idx] = datasets[idx].tolist()
+            
+    return datasets
 
 
-    # Linear Programming
-    model = pyo.ConcreteModel()
+def ObjRule(model):
+    """Objective Function (4.3 in witten 2009)"""
+    features = len(model.PC.data())
+    samples = len(model.samples.data())
+    return sum(
+                (np.asarray([model.w_i_f[idx, f] for f in model.PC.data()])[np.newaxis]
+               @ np.asarray(xi).reshape(samples,features).T 
+               @ np.asarray(xj).reshape(samples,features)
+               @ np.asarray([model.w_i_f[jdx, f] for f in model.PC.data()])[np.newaxis].T)[0,0] 
+               for idx, xi in enumerate(model.X) for jdx, xj in enumerate(model.X) if idx<jdx )
+
+
+def do_linear_approach(datasets, penalties):
+""" solves 4.3 of witten 2009 with linear programming approach
+    -------
+    Parameters:  
+        datasets: N matrices [samples x features]
+        penalties: list of length N for each Xi
     
-    # sets: 
+    -------
+    Returns: 
+        w: defaultdict(list)
+        - for each matrix Xn in datasets (n in [1:n]): n-> weights_vector
+        - each weights_vector: list of length f (featuresize)
+        - f = len(datasets[0][0])
+    """
+
+    model = pyo.ConcreteModel()
+
+    # sets 
     model.Idx = pyo.Set(initialize=range(len(datasets)))
     model.samples = pyo.Set(initialize=range(len(datasets[0])))
     model.PC = pyo.Set(initialize=range(len(datasets[0][0])))
-    model.K = pyo.Set(initialize=range(K))
-    model.X = pyo.Set(initialize=datasets) 
+    model.X = pyo.Set(initialize=datasets)
 
-    # params: ci i in [1:N]
+    # params: ci i in [1:K]
     model.c = pyo.Param(model.Idx, initialize=penalties)
 
-    # variables: weights
-    model.w_i_k_f = pyo.Var(model.Idx,model.K, model.PC, bounds=(0, 1), initialize=0.5)
-    
-    # Objective
-    model.Obj = pyo.Objective(rule=ObjRule, sense=pyo.maximize)
+    # var
+    model.w_i_f = pyo.Var(model.Idx, model.PC, bounds=(0, 1), initialize=0.5)
 
-    # constraints: lasso model.constraint_lasso = pyo.ConstraintList()
+    # obj
+    model.Obj = pyo.Objective(rule=ObjRule, sense=pyo.maximize)
+    
+    # constraints: lasso 
     model.constraint_lasso = pyo.ConstraintList()
     for i in model.Idx:
-        model.constraint_lasso.add(sum(model.w_i_k_f[i,k,f] for k in model.K.data() for f in model.PC.data())<= model.c[i])
-              
+        model.constraint_lasso.add(sum(model.w_i_f[i,f] for f in model.PC.data())<= model.c[i])
+        
     # constraints: (2-norm)^2 ||wi||22 <=1
     model.constraint_norm2 = pyo.ConstraintList()
     for i in model.Idx:
-        model.constraint_norm2.add(sum(model.w_i_k_f[i,k,f] * model.w_i_k_f[i,k,f] for k in model.K.data() for f in model.PC.data()) <= 1)
-    
-    nonLinearOpt =pyo.SolverFactory('ipopt')
+        model.constraint_norm2.add(sum(model.w_i_f[i,f] * model.w_i_f[i,f] for f in model.PC.data()) <= 1)
+        
+    # solving
+    nonLinearOpt = pyo.SolverFactory('ipopt')
     instance_non_linear = model.create_instance()
     res = nonLinearOpt.solve(instance_non_linear)
     model.solutions.load_from(res)
-
-
+    
+    instance_non_linear.display()
+    
+    from collections import defaultdict
     w = defaultdict(list)
     for i in model.Idx:
-        for k in model.K.data():
-            for f in model.PC.data():
-                w[i, k].append(instance_non_linear.w_i_k_f[i,k,f].value) # maybe just i as index?
+        for f in model.PC.data():
+            w[i].append(instance_non_linear.w_i_f[i,f].value) 
+            
     return w
+
+
+
+def iterative_process_K(datasets:list, penalties:list,  K:int):
+    """ calculates K weights [1xN]
+    -------
+    Parameters:  
+        datasets: N matrices [samples x features]
+        penalties: list of length N for each Xi
+        K: Amount of MCPs
+    
+    -------
+    Returns
+        weights : list
+        - list of length K
+        - each entry is a default dict: n -> weights_vector (1 x feature)
+            (n is the index of the matrix Xn. n in [1:N])
+        - feature = len(datasets[0][0])
+    """
+    sample_size = len(datasets[0])
+    feature_amount = len(datasets[0][0])
+    
+    datasets_next = preprocess_datasets(datasets)
+    weights = []
+    
+    k = 0
+    while k < K:
+        w = do_linear_approach(datasets_next, penalties)
+        datasets_current = datasets_next
+    
+        w_samples = {}
+        for w_n in w:
+            w_sample = np.repeat(w[w_n],sample_size, axis=0).reshape(sample_size,feature_amount)
+            w_samples[w_n] = w_sample
+
+        datasets_next = []
+        count=0
+        for X_i in datasets_current:
+            X_i_next = X_i - w_samples[count]
+            datasets_next.append(X_i_next.tolist())
+            count+=1
+            
+        weights.append(w)      
+            
+        k += 1
+        
+    return weights
+
+
+def multicca_LA(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True):
+    """Re-implementation of the MultiCCA Using Linear programming.
+    
+    ignores mimic_R, standadize and niter
+   
+    Returns
+    -------
+    ws : list
+        - list of length K
+        - each entry is a default dict: n -> weights_vector (1 x feature)
+            (n is the index of the matrix Xn. n in [1:N])
+    """
+    return iterative_process_K(datasets, penalties, K)
+    
