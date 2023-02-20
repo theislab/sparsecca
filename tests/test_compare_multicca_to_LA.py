@@ -44,18 +44,38 @@ def test_compare_multicca_to_Linear_approach():
         """
     )
 
-    #ws_LA = multicca_LA(datasets, [1.5, 1.5],standardize=True, niter=25)
+    ws_LA = multicca_LA(datasets, [1.5, 1.5],standardize=True, niter=25)
 
     print("\nR weigth:")
     print(r_pma_ws)
 
     print("\nLA weight:")
-    #print(ws_LA)
+    print(ws_LA)
 
+    k=0
+    
+    
     # TODO: install solver "ipopt" on dev container
-    # TODO: compare output to python function
-    '''for i in range(len(r_pma_ws)):
-        assert np.allclose(ws_LA[i], np.array(r_pma_ws[i]), rtol=1e-10)'''
+    # TODO: compare output to r function
+    #tmp = np.zeros((len(r_pma_ws)))
+    #print(tmp)
+    #tmp2 = np.zeros((len(ws_LA[0,k]),1))
+    #print(tmp2)
+    for i in range(len(r_pma_ws)):
+        #print(np.asarray(ws_LA[i,k]).reshape(5,1))
+        #for j in range(len(ws_LA[i,k])):
+         #   print(ws_LA[i,k][j])
+            #tmp2[j]=(ws_LA[i,k][j])
+        # reshape ws_la -> k = 0
+        #print(tmp2)
+        #tmp[i] = tmp2
+        #print(tmp)
+        #print((np.array(ws_LA[i,0])))
+        #print((np.array(r_pma_ws[i])))
+        #print((np.array(r_pma_ws[i])).flatten())
+        print(np.array(ws_LA[i,0]).reshape(5,1))
+        print(np.array(r_pma_ws[i]))
+        assert np.allclose(np.array(ws_LA[i,0]).reshape(5,1), (np.array(r_pma_ws[i])), rtol=1e-10)
 
 if __name__ == "__main__":
     test_compare_multicca_to_Linear_approach()
