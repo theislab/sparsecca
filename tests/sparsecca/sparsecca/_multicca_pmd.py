@@ -105,7 +105,7 @@ def _update_w_lp(datasets, penalties):
 
 
 
-def lp_pmd(datasets:list, penalties:list,  K:int, standadize, mimic_R):
+def lp_pmd(datasets:list, penalties:list,  K:int, standardize:bool, mimic_R):
     """ calculates K weights [1xN]
     -------
     Parameters:  
@@ -121,7 +121,7 @@ def lp_pmd(datasets:list, penalties:list,  K:int, standadize, mimic_R):
     sample_size = len(datasets[0])
     feature_amount = len(datasets[0][0])
     
-    datasets_next = preprocess_datasets(datasets, standardize=standadize, mimic_R=mimic_R)
+    datasets_next = preprocess_datasets(datasets, standardize=standardize, mimic_R=mimic_R)
     weights = []
     
     k = 0
@@ -157,6 +157,6 @@ def lp_pmd(datasets:list, penalties:list,  K:int, standadize, mimic_R):
         
     return weight_output
 
-def multicca(datasets:list, penalties:list,  K:int, standadize, mimic_R):
+def multicca(datasets:list, penalties:list,  K:int, standardize, mimic_R):
     return lp_pmd(datasets, penalties, K, standadize, mimic_R)
     
