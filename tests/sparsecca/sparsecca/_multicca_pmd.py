@@ -46,7 +46,7 @@ def ObjRule(model):
                for idx, xi in enumerate(model.X) for jdx, xj in enumerate(model.X) if idx<jdx )
 
 
-def _update_w_lp(datasets, penalties):
+def _update_w_lp(datasets, penalties, ws_init):
     """ solves 4.3 of witten 2009 with linear programming approach
         -------
         Parameters:  
@@ -72,7 +72,10 @@ def _update_w_lp(datasets, penalties):
     model.c = pyo.Param(model.N, initialize=penalties)
 
     # var
-    model.w_i_f = pyo.Var(model.N, model.F, bounds=(0, 1), initialize=0.5)
+    model.w_i_f = pyo.Var(model.N, model.F, initialize=0.5)
+    for n in range(len(ws_init)):
+        for f in range(len(ws_init[0])):
+            model.w_i_f[n,f].value = ws_init[n][f][0]
 
     # obj
     model.Obj = pyo.Objective(rule=ObjRule, sense=pyo.maximize)
@@ -127,7 +130,12 @@ def lp_pmd(datasets:list, penalties:list,  K:int, standardize:bool, mimic_R):
     
     k = 0
     while k < K:
-        w = _update_w_lp(datasets_next, penalties)
+        ws_init=[]
+        for idx in range(len(datasets_next)):
+            ws_init.append(svd(datasets_next[idx])[2][0:K].T)
+
+    
+        w = _update_w_lp(datasets_next, penalties, ws_init)
         datasets_current = datasets_next
     
         w_samples = {}
