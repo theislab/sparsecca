@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from rpy2 import robjects
 import rpy2.robjects.packages as rpackages
-
+import scanpy as scp
 from sparsecca.sparsecca._multicca_pmd import lp_pmd
 
 def test_compare_multicca_to_Linear_approach():
@@ -49,7 +49,7 @@ def test_compare_multicca_to_Linear_approach():
     #print(r_pma_ws)
 
     #print("\nLA weight:")
-    print(ws_LA)
+    #print(ws_LA)
 
     k=0
 
