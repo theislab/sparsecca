@@ -146,7 +146,7 @@ def lp_pmd(datasets:list, penalties:list,  K:int, standardize:bool, mimic_R):
             
         k += 1
 
-    w_final = [np.zeros((len(datasets[0][0]),K))]*len(datasets)
+    w_final = np.zeros((len(datasets),len(datasets[0][0]),K))
     for k, w_k in enumerate(weights):
         #print(f"k: {k}")
         for n, w_value in enumerate(w_k.values()):
