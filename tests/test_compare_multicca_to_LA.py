@@ -54,12 +54,14 @@ def test_compare_multicca_to_Linear_approach():
     k=0
 
     for i in range(len(r_pma_ws)):
-        print(f"\nX_i : {i+1} ")
-        print(f"R weigth:\n {np.array(r_pma_ws[i])}")
-        print(f"LA weigth: \n {ws_LA[i]}")
-        print(f"assert: {np.allclose(ws_LA[i], np.array(r_pma_ws[i]), rtol=1e-10)}")
-        print(f"correlation: \n{(np.corrcoef((ws_LA[i].flatten()), np.array(r_pma_ws[i]).flatten()))}")
-        #assert np.allclose(ws_LA[i], np.array(r_pma_ws[i]), rtol=1e-10)
+        # TODO: make it work for k>1
+        for k in range(len(np.array(r_pma_ws[i])[0])):
+            print(f"\nk: {k+1}")
+            print(f"X_i : {i+1} ")
+            print(f"R weigth:\n {np.array(r_pma_ws[i])}")
+            print(f"LA weigth: \n {ws_LA[i]}")
+            #print(f"assert: {np.allclose(ws_LA[i], np.array(r_pma_ws[i]), rtol=1e-10)}")
+            print(f"correlation: \n{(np.corrcoef((ws_LA[i].flatten()), np.array(r_pma_ws[i]).flatten()))}")
 
 if __name__ == "__main__":
     test_compare_multicca_to_Linear_approach()
