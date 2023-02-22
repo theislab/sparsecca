@@ -46,7 +46,9 @@ jobs:
             pip-${{ runner.os }}-${{ env.pythonLocation }}-
 
       - name: Activate environment
-        run: micromamba activate sparsecca
+        run: |
+        eval "$(micromamba shell hook --shell=bash)"
+        micromamba activate sparsecca
 
       - name: Install test dependencies
         run: |
