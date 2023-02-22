@@ -45,23 +45,14 @@ def test_compare_multicca_to_Linear_approach():
 
     ws_LA,_ = lp_pmd(datasets, [1.5, 1.5],K=1,standardize=True, mimic_R=True)
 
-    #print("\nR weigth:")
-    #print(r_pma_ws)
-
-    #print("\nLA weight:")
-    #print(ws_LA)
-
-    k=0
-
+    # checking correlation between R weigths and LA weigths 
     for i in range(len(r_pma_ws)):
-        # TODO: make it work for k>1
+        print(f"\nDataset: {i+1} ")
         for k in range(len(np.array(r_pma_ws[i])[0])):
-            print(f"\nk: {k+1}")
-            print(f"X_i : {i+1} ")
-            print(f"R weigth:\n {np.array(r_pma_ws[i])}")
-            print(f"LA weigth: \n {ws_LA[i]}")
-            #print(f"assert: {np.allclose(ws_LA[i], np.array(r_pma_ws[i]), rtol=1e-10)}")
-            print(f"correlation: \n{(np.corrcoef((ws_LA[i].flatten()), np.array(r_pma_ws[i]).flatten()))}")
+            print(f"k: {k+1}")
+            print(f"R weigth:\n {np.array(r_pma_ws)[i,:,k]}")
+            print(f"LA weigth: \n {ws_LA[i,:,k]}")
+            print(f"correlation: \n{(np.corrcoef((ws_LA[i,:,k].flatten()), np.array(r_pma_ws)[i,:,k].flatten()))}")
 
 if __name__ == "__main__":
     test_compare_multicca_to_Linear_approach()
