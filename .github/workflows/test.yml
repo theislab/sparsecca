@@ -51,7 +51,7 @@ jobs:
           micromamba activate sparsecca
 
       - name: Print pip list
-        run: pip list
+        run: micromamba run pip list
 
       - name: Install test dependencies
         run: |
