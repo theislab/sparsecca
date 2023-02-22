@@ -49,15 +49,16 @@ jobs:
         run: |
           eval "$(micromamba shell hook --shell=bash)"
           micromamba activate sparsecca
-          pip list
 
       - name: Install test dependencies
         run: |
+          micromamba activate sparsecca
           python -m pip install --upgrade pip wheel
           pip install codecov
 
       - name: Install dependencies
         run: |
+          micromamba activate sparsecca
           pip install ".[dev,test]"
 
       - name: Test
@@ -66,10 +67,12 @@ jobs:
           PLATFORM: ${{ matrix.os }}
           DISPLAY: :42
         run: |
+          micromamba activate sparsecca
           pytest -v --cov --color=yes
 
       - name: Upload coverage
         env:
           CODECOV_NAME: ${{ matrix.python }}-${{ matrix.os }}
         run: |
+          micromamba activate sparsecca
           codecov --required --flags=unittests
