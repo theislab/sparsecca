@@ -47,8 +47,8 @@ jobs:
 
       - name: Activate environment
         run: |
-        eval "$(micromamba shell hook --shell=bash)"
-        micromamba activate sparsecca
+          eval "$(micromamba shell hook --shell=bash)"
+          micromamba activate sparsecca
 
       - name: Install test dependencies
         run: |
