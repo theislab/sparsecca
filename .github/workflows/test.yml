@@ -27,7 +27,7 @@ jobs:
       - name: Install Conda environment from environment.yml
         uses: mamba-org/provision-with-micromamba@main
         with:
-          environment-file: environment.yaml
+          environment-file: environment.yml
       - name: Install sparsecca
         run: pip install .
 
