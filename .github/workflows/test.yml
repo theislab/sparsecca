@@ -50,6 +50,9 @@ jobs:
           eval "$(micromamba shell hook --shell=bash)"
           micromamba activate sparsecca
 
+      - name: Print pip list
+        run: pip list
+
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip wheel
