@@ -25,13 +25,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install Conda environment from environment.yml
-        uses: mamba-org/provision-with-micromamba@main
-        
+        uses: conda-incubator/setup-miniconda@v2
         with:
-          channel-priority: disabled
-          cache-downloads: true
-          environment-name: sparsecca
+          activate-environment: sparsecca
           environment-file: environment.yml
+          auto-activate-base: false
+      - run: |
+          conda info
+          conda list
 
       - name: Get pip cache dir
         id: pip-cache-dir
@@ -45,20 +46,13 @@ jobs:
           restore-keys: |
             pip-${{ runner.os }}-${{ env.pythonLocation }}-
 
-      - name: Activate environment
-        run: |
-          micromamba shell init --shell=bash --prefix=~/micromamba
-          micromamba activate sparsecca
-
       - name: Install test dependencies
         run: |
-          micromamba activate sparsecca
           python -m pip install --upgrade pip wheel
           pip install codecov
 
       - name: Install dependencies
         run: |
-          micromamba activate sparsecca
           pip install ".[dev,test]"
 
       - name: Test
@@ -67,12 +61,10 @@ jobs:
           PLATFORM: ${{ matrix.os }}
           DISPLAY: :42
         run: |
-          micromamba activate sparsecca
           pytest -v --cov --color=yes
 
       - name: Upload coverage
         env:
           CODECOV_NAME: ${{ matrix.python }}-${{ matrix.os }}
         run: |
-          micromamba activate sparsecca
           codecov --required --flags=unittests
