@@ -54,7 +54,3 @@ def test_compare_multicca_to_Linear_approach():
             print(f"correlation: \n{np.corrcoef(ws_LA[i,:,k].flatten(), np.array(r_pma_ws)[i,:,k].flatten())}")
             # assert np.allclose(ws_LA[i,:,k], np.array(r_pma_ws)[i,:,k], atol=.5)
             assert np.allclose(np.corrcoef(ws_LA[i,:,k].flatten(), np.array(r_pma_ws)[i,:,k].flatten()), 1, atol=.3)
-
-if __name__ == "__main__":
-    test_compare_multicca_to_Linear_approach()
-    
