@@ -2,13 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.linalg import svd
 from collections import defaultdict
-try:
-    import pyomo.environ as pyo
-except ImportError as e:
-    if "pyomo" in str(e):
-        print("[bold yellow]To solve PMD with linear programming, please install pyomo with `conda install -c conda-forge pyomo`")
-    else:
-        raise 
+import pyomo.environ as pyo
 
 from ._utils_pmd import binary_search, l2n, soft, scale   
 
