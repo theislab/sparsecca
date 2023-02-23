@@ -1,16 +1,16 @@
 import numpy as np
-from scipy.linalg import svd
-import pyomo.environ as pyo
-from collections import defaultdict
-#from sparsecca import _utils_pmd
-
-from ._utils_pmd import binary_search, l2n, soft, scale
-
 import pandas as pd
+from scipy.linalg import svd
+from collections import defaultdict
+try:
+    import pyomo.environ as pyo
+except ImportError as e:
+    if "pyomo" in str(e):
+        print("[bold yellow]To solve PMD with linear programming, please install pyomo with `conda install -c conda-forge pyomo`")
+    else:
+        raise 
 
-   
-
-# Linear Programming 
+from ._utils_pmd import binary_search, l2n, soft, scale   
 
 
 def preprocess_datasets(datasets:list, standardize=True, mimic_R=True):
