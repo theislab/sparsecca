@@ -4,8 +4,7 @@ from rpy2 import robjects
 import rpy2.robjects.packages as rpackages
 from rpy2.robjects.numpy2ri import numpy2rpy
 
-# TODO: merge with elias tests -> multicca was changed to multicca_LA 
-#from sparsecca.sparsecca._multicca_pmd import multicca
+from sparsecca import multicca_pmd
 
 utils = rpackages.importr("utils")
 utils.chooseCRANmirror(ind=1)
@@ -91,8 +90,6 @@ def test_compare_multicca_to_r_3datasets_equal_feature_length():
     for i in range(len(r_ws)):
         assert np.allclose(ws[i], np.array(r_ws[i]), rtol=1e-10)
 
-    for i in range(len(r_ws)):
-        assert np.allclose(ws[i], np.array(r_ws[i]), rtol=1e-10)
 
 def test_compare_multicca_to_r_2datasets_unequal_feature_length():
     datasets = [
