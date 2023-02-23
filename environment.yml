@@ -1,0 +1,16 @@
+name: sparsecca
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.10
+  - pandas
+  - numpy
+  - statsmodels
+  # developer dependencies
+  - rpy2
+  - r-base=4
+  - r-data.table
+  - r-pma
+  - pytest
+  - pip
