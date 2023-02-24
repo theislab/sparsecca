@@ -3,31 +3,10 @@ from scipy.linalg import svd
 from collections import defaultdict
 import pyomo.environ as pyo
 
-from ._utils_pmd import scale
+from ._utils_pmd import scale, preprocess_datasets
 
 
-def preprocess_datasets(datasets:list, standardize=True, mimic_R=True):
-    # preprocess data
-    datasets = datasets.copy()
-    # 2 features needed
-    for data in datasets:
-        if len(data[0]) < 2:
-            raise Exception('Need at least 2 features in each dataset')
-
-    # standardize if set TRUE
-    if standardize:
-        for idx in range(len(datasets)):
-            if mimic_R:
-                datasets[idx] = scale(datasets[idx], center=True, scale=True)
-            else:
-                datasets[idx] = scale(datasets[idx], center=True, scale=False)
-
-            datasets[idx] = datasets[idx].tolist()
-            
-    return datasets
-
-
-def ObjRule(model):
+def _ObjRule(model):
     """Objective Function (4.3 in witten 2009)"""
     features = len(model.F.data())
     samples = len(model.S.data())
@@ -73,7 +52,7 @@ def _update_w_lp(datasets, penalties, ws_init):
             model.w_i_f[n,f].value = ws_init[n][f][0]
 
     # obj
-    model.Obj = pyo.Objective(rule=ObjRule, sense=pyo.maximize)
+    model.Obj = pyo.Objective(rule=_ObjRule, sense=pyo.maximize)
     
     # constraints: lasso 
     model.constraint_lasso = pyo.ConstraintList()
@@ -106,9 +85,9 @@ def lp_pmd(datasets, penalties, K=1, standardize=True, mimic_R=True):
 
     Params
     ------
-    datasets : list
+    datasets : list[arr]
         List of n matrices of shape (samples x features)
-    penalties : list
+    penalties : list[int]
         List of n (1 x features) vectors. `c` in Witten 2009
     K : int (default: 1)
         Number of latent factors to calculate.
@@ -127,10 +106,12 @@ def lp_pmd(datasets, penalties, K=1, standardize=True, mimic_R=True):
     """
     sample_size = len(datasets[0])
     n_features = len(datasets[0][0])
-    
+
+    # preprocessing for pyomo
     datasets_next = preprocess_datasets(datasets, standardize=standardize, mimic_R=mimic_R)
+    datasets_next = [datasets[idx].tolist() for idx in range(len(datasets))]
+
     weights = []
-    
     k = 0
     for k in range(K):
         ws_init=[]

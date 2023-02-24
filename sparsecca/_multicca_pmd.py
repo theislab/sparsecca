@@ -6,6 +6,7 @@ from ._utils_pmd import (
     l2n,
     soft,
     scale,
+    preprocess_datasets,
 )
 
 
@@ -64,16 +65,7 @@ def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True)
         sparse canonical variates per dataset.
     """
     datasets = datasets.copy()
-    for data in datasets:
-        if data.shape[1] < 2:
-            raise Exception("Need at least 2 features in each dataset")
-
-    if standardize:
-        for idx in range(len(datasets)):
-            if mimic_R:
-                datasets[idx] = scale(datasets[idx], center=True, scale=True)
-            else:
-                datasets[idx] = scale(datasets[idx], center=True, scale=False)
+    datasets = preprocess_datasets(datasets, standardize=standardize, mimic_R=mimic_R)
 
     ws = []
     for idx in range(len(datasets)):
