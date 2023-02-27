@@ -43,6 +43,7 @@ def test_compare_multicca_to_Linear_approach():
     )
 
     ws_LA, _ = lp_pmd(datasets, [1.5, 1.5], K=1, standardize=True, mimic_R=True)
+    ws_LA = np.array(ws_LA)
 
     # checking correlation between R weigths and LA weigths 
     for i in range(len(r_pma_ws)):

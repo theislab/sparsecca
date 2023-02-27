@@ -53,3 +53,29 @@ def scale(mtx, center=True, scale=True):
     # correction when calculating the standard deviation in numpy
     scaled = centered / centered.std(axis=0, ddof=1)
     return scaled
+
+
+def preprocess_datasets(datasets:list, standardize=True, mimic_R=True):
+    """Center and scale data before computing penalized matrix decomposition.
+
+    Params
+    ------
+    datasets : list[float]
+    standardize : bool (default: True)
+        Centers the data, and scales if `mimic_R` is True.
+    mimic_R : bool (default: True)
+        If True, normalizes data in addition to centering.
+    """
+    for data in datasets:
+        if len(data[0]) < 2:
+            raise Exception(f'Need at least 2 features in each dataset. Currently have {len(data[0])}')
+
+    # standardize if set TRUE
+    if standardize:
+        for idx in range(len(datasets)):
+            if mimic_R:
+                datasets[idx] = scale(datasets[idx], center=True, scale=True)
+            else:
+                datasets[idx] = scale(datasets[idx], center=True, scale=False)
+
+    return datasets
