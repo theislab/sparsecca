@@ -60,9 +60,11 @@ def multicca(datasets, penalties, niter=25, K=1, standardize=True, mimic_R=True)
 
     Returns
     -------
-    ws : list
+    ws_final : list
         List of arrays of shape (datasets.shape[1], K) corresponding to the
         sparse canonical variates per dataset.
+    ws_init : list(arr)
+        List of arrrays of length `K` which contain the svd initializations for `w`.
     """
     datasets = datasets.copy()
     datasets = preprocess_datasets(datasets, standardize=standardize, mimic_R=mimic_R)

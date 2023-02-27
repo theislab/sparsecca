@@ -47,8 +47,8 @@ def _update_w_lp(datasets, penalties, ws_init):
 
     # var
     model.w_i_f = pyo.Var(model.N, model.F, initialize=0.5)
-    for n in range(len(ws_init)):
-        for f in range(len(ws_init[0])):
+    for n in range(len(ws_init)):  # datasets
+        for f in range(len(ws_init[0])):  # features
             model.w_i_f[n,f].value = ws_init[n][f][0]
 
     # obj
@@ -100,9 +100,12 @@ def lp_pmd(datasets, penalties, K=1, standardize=True, mimic_R=True):
 
     Returns
     -------
-    w_final : list
-        - list of length N, arrays of shape feature x K
-    w_init: initialized with 0.5
+    ws_final : list(arr)
+        List of arrays of shape (datasets.shape[1], K) corresponding to the
+        sparse canonical variates per dataset.
+    ws_init : list(arr)
+        List of arrrays of length `K` which contain the svd initializations for `w`.
+
     """
     sample_size = len(datasets[0])
     n_features = len(datasets[0][0])
@@ -113,10 +116,13 @@ def lp_pmd(datasets, penalties, K=1, standardize=True, mimic_R=True):
 
     weights = []
     k = 0
+    ws_inits = []
     for k in range(K):
+        # slightly different initialization - recalculate the svd per K
         ws_init=[]
         for idx in range(len(datasets_next)):
             ws_init.append(svd(datasets_next[idx])[2][0:K].T)
+        ws_inits.append(np.array(ws_init))
         w = _update_w_lp(datasets_next, penalties, ws_init)
         datasets_current = datasets_next
     
@@ -134,14 +140,12 @@ def lp_pmd(datasets, penalties, K=1, standardize=True, mimic_R=True):
 
     w_final = np.zeros((len(datasets), n_features, K))
     for k, w_k in enumerate(weights):
-        #print(f"k: {k}")
         for n, w_value in enumerate(w_k.values()):
-            #print(f"n: {n}")
             for f, w_feature in enumerate(w_value):
-                #print(f"f: {f}")
-                #print(w_feature)
                 w_final[n][f][k] = w_feature
-        
-    w_init = [np.full((n_features, K), 0.5)]*len(datasets)
-    return w_final, w_init
+
+    ws_init = [v.reshape(K, n_features).T for v in np.concatenate(  # could probably be simpler
+        [x[:, :, 0].reshape(len(datasets), n_features) for x in ws_inits], axis=1)]
+
+    return list(w_final), ws_init
     
