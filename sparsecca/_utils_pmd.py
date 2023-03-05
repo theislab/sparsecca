@@ -51,5 +51,6 @@ def scale(mtx, center=True, scale=True):
 
     # to replicate the R implementation of scale, we apply Bessel's
     # correction when calculating the standard deviation in numpy
-    scaled = centered / centered.std(axis=0, ddof=1)
+    # TODO: check divide by zero issues
+    scaled = centered / (centered.std(axis=0, ddof=1) + 0.0000000001)
     return scaled
