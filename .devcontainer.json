@@ -12,5 +12,6 @@
         "REditorSupport.r"
       ]
     }
-  }
+  },
+  "postCreateCommand": "pip install -e ."
 }
