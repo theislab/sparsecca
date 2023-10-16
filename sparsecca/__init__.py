@@ -1,4 +1,4 @@
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 from ._cca_pmd import cca as cca_pmd
 from ._multicca_pmd import multicca as multicca_pmd
